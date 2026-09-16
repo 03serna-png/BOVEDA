@@ -225,6 +225,7 @@
     <div class="nav-section-label">Categorías</div>
     <div id="nav-categories"></div>
     <div class="nav-bottom">
+      <div class="nav-item" id="nav-onedrive">☁️ <span id="onedrive-label">Conectar OneDrive</span></div>
       <div class="nav-item" id="nav-generator">🎲 Generador</div>
       <div class="nav-item" id="nav-lock">🔒 Bloquear ahora</div>
     </div>
@@ -329,6 +330,33 @@
     </div>
     <div class="modal-footer">
       <button class="btn" id="gen-regenerate" style="width:auto; padding:9px 16px;">↻ Regenerar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ONEDRIVE MODAL ================= -->
+<div class="overlay" id="od-overlay">
+  <div class="modal" style="width:360px;">
+    <div class="modal-header">
+      <h2>OneDrive</h2>
+      <button class="icon-btn" id="od-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="od-disconnected-view">
+        <p style="color:var(--text-dim); font-size:13.5px; line-height:1.6; margin-bottom:16px;">
+          Conecta tu OneDrive para guardar una copia cifrada de tu bóveda en la nube y sincronizarla entre dispositivos.
+        </p>
+        <button class="btn" id="od-connect-btn">Conectar con OneDrive</button>
+      </div>
+      <div id="od-connected-view" style="display:none;">
+        <p style="color:var(--success); font-size:13px; margin-bottom:4px;">● Conectado a OneDrive</p>
+        <p id="od-account-email" style="color:var(--text-faint); font-size:12.5px; margin-bottom:18px;"></p>
+        <p id="od-last-sync" style="color:var(--text-faint); font-size:12px; margin-bottom:16px;"></p>
+        <button class="btn" id="od-upload-btn" style="margin-bottom:8px;">↑ Subir bóveda a OneDrive</button>
+        <button class="btn btn-ghost" id="od-download-btn" style="margin-bottom:8px;">↓ Descargar bóveda de OneDrive</button>
+        <button class="btn btn-ghost" id="od-disconnect-btn" style="color:var(--danger); border-color:var(--danger-bg);">Desconectar</button>
+      </div>
+      <div id="od-status-msg" style="margin-top:12px; font-size:12.5px; color:var(--text-faint);"></div>
     </div>
   </div>
 </div>
@@ -816,8 +844,189 @@
     navigator.clipboard.writeText($("gen-output").value).then(()=>toast("Contraseña copiada"));
   };
 
+  /* ============ ONEDRIVE SYNC (OAuth 2.0 PKCE + Microsoft Graph) ============ */
+  const OD_CLIENT_ID = "5ad9d8ae-9b6e-4c2a-973b-749e00dc0600";
+  const OD_REDIRECT_URI = window.location.origin + window.location.pathname;
+  const OD_AUTHORITY = "https://login.microsoftonline.com/consumers";
+  const OD_SCOPES = "Files.ReadWrite.AppFolder offline_access User.Read";
+  const OD_TOKEN_KEY = "od_tokens_v1";
+  const OD_LAST_SYNC_KEY = "od_last_sync_v1";
+  const OD_VERIFIER_KEY = "od_pkce_verifier";
+  const OD_FILE_NAME = "vault.enc";
+
+  function b64url(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+
+  function randomString(len){
+    const arr = crypto.getRandomValues(new Uint8Array(len));
+    return b64url(arr).slice(0, len);
+  }
+
+  async function pkceChallenge(verifier){
+    const digest = await crypto.subtle.digest("SHA-256", enc.encode(verifier));
+    return b64url(digest);
+  }
+
+  function getStoredTokens(){
+    try{ return JSON.parse(localStorage.getItem(OD_TOKEN_KEY)); }catch(e){ return null; }
+  }
+  function storeTokens(tokens){
+    tokens.obtained_at = Date.now();
+    localStorage.setItem(OD_TOKEN_KEY, JSON.stringify(tokens));
+  }
+  function clearTokens(){ localStorage.removeItem(OD_TOKEN_KEY); }
+
+  async function odConnect(){
+    const verifier = randomString(64);
+    sessionStorage.setItem(OD_VERIFIER_KEY, verifier);
+    const challenge = await pkceChallenge(verifier);
+    const params = new URLSearchParams({
+      client_id: OD_CLIENT_ID,
+      response_type: "code",
+      redirect_uri: OD_REDIRECT_URI,
+      response_mode: "query",
+      scope: OD_SCOPES,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      state: "od_auth"
+    });
+    window.location.href = `${OD_AUTHORITY}/oauth2/v2.0/authorize?${params.toString()}`;
+  }
+
+  async function odHandleRedirect(){
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if(!code || state !== "od_auth") return;
+
+    const verifier = sessionStorage.getItem(OD_VERIFIER_KEY);
+    window.history.replaceState({}, "", OD_REDIRECT_URI);
+    if(!verifier) return;
+
+    try{
+      const body = new URLSearchParams({
+        client_id: OD_CLIENT_ID,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: OD_REDIRECT_URI,
+        code_verifier: verifier
+      });
+      const res = await fetch(`${OD_AUTHORITY}/oauth2/v2.0/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      if(!res.ok) throw new Error("token exchange failed");
+      const tokens = await res.json();
+      storeTokens(tokens);
+      toast("OneDrive conectado");
+    }catch(err){
+      toast("No se pudo conectar con OneDrive");
+    }
+  }
+
+  async function odGetValidAccessToken(){
+    let tokens = getStoredTokens();
+    if(!tokens) return null;
+    const age = Date.now() - (tokens.obtained_at || 0);
+    const expiresMs = (tokens.expires_in || 3600) * 1000;
+    if(age < expiresMs - 60000) return tokens.access_token;
+
+    if(!tokens.refresh_token) { clearTokens(); return null; }
+    try{
+      const body = new URLSearchParams({
+        client_id: OD_CLIENT_ID,
+        grant_type: "refresh_token",
+        refresh_token: tokens.refresh_token,
+        scope: OD_SCOPES
+      });
+      const res = await fetch(`${OD_AUTHORITY}/oauth2/v2.0/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      if(!res.ok) throw new Error("refresh failed");
+      const newTokens = await res.json();
+      storeTokens(newTokens);
+      return newTokens.access_token;
+    }catch(err){
+      clearTokens();
+      return null;
+    }
+  }
+
+  async function odUploadVault(){
+    const token = await odGetValidAccessToken();
+    if(!token){ toast("Conecta OneDrive primero"); return false; }
+    const blob = JSON.parse(localStorage.getItem(STORAGE_BLOB));
+    const payload = JSON.stringify({ ...blob, salt: localStorage.getItem(STORAGE_SALT) });
+    try{
+      const res = await fetch(
+        `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${OD_FILE_NAME}:/content`,
+        { method:"PUT", headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/octet-stream" }, body: payload }
+      );
+      if(!res.ok) throw new Error("upload failed");
+      localStorage.setItem(OD_LAST_SYNC_KEY, Date.now().toString());
+      toast("Bóveda subida a OneDrive");
+      return true;
+    }catch(err){
+      toast("Error al subir a OneDrive");
+      return false;
+    }
+  }
+
+  async function odDownloadVault(){
+    const token = await odGetValidAccessToken();
+    if(!token){ toast("Conecta OneDrive primero"); return; }
+    try{
+      const res = await fetch(
+        `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${OD_FILE_NAME}:/content`,
+        { headers:{ "Authorization":"Bearer "+token } }
+      );
+      if(res.status === 404){ toast("No hay copia en OneDrive aún"); return; }
+      if(!res.ok) throw new Error("download failed");
+      const remote = await res.json();
+      if(!confirm("Esto reemplazará la bóveda de este dispositivo con la de OneDrive. ¿Continuar?")) return;
+
+      // Se descifra con la llave de la sesión actual (misma contraseña maestra en ambos dispositivos)
+      const data = await decryptVault({ iv: remote.iv, data: remote.data }, sessionKey);
+      vault = data;
+      localStorage.setItem(STORAGE_SALT, remote.salt);
+      localStorage.setItem(STORAGE_BLOB, JSON.stringify({ iv: remote.iv, data: remote.data }));
+      localStorage.setItem(OD_LAST_SYNC_KEY, Date.now().toString());
+      selectedEntryId = null;
+      renderCategories(); renderList(); renderDetail();
+      toast("Bóveda restaurada desde OneDrive");
+    }catch(err){
+      toast("No se pudo descifrar: usa la misma contraseña maestra en ambos dispositivos");
+    }
+  }
+
+  function odUpdateModalView(){
+    const tokens = getStoredTokens();
+    const connected = !!tokens;
+    $("od-disconnected-view").style.display = connected ? "none" : "block";
+    $("od-connected-view").style.display = connected ? "block" : "none";
+    $("onedrive-label").textContent = connected ? "OneDrive conectado" : "Conectar OneDrive";
+    if(connected){
+      const last = localStorage.getItem(OD_LAST_SYNC_KEY);
+      $("od-last-sync").textContent = last ? "Última sincronización: " + new Date(+last).toLocaleString("es-MX") : "Aún no se ha sincronizado";
+    }
+  }
+
+  $("nav-onedrive").onclick = ()=>{ odUpdateModalView(); $("od-overlay").classList.add("active"); };
+  $("od-close").onclick = ()=> $("od-overlay").classList.remove("active");
+  $("od-overlay").addEventListener("click", e=>{ if(e.target===$("od-overlay")) $("od-overlay").classList.remove("active"); });
+  $("od-connect-btn").onclick = odConnect;
+  $("od-upload-btn").onclick = ()=> odUploadVault().then(odUpdateModalView);
+  $("od-download-btn").onclick = ()=> odDownloadVault().then(odUpdateModalView);
+  $("od-disconnect-btn").onclick = ()=>{ clearTokens(); odUpdateModalView(); toast("OneDrive desconectado"); };
+
   /* ============ BOOT ============ */
   initLockScreen();
+  odHandleRedirect().then(()=>{ if(appEl.classList.contains("active")) odUpdateModalView(); });
 
 })();
 </script>
