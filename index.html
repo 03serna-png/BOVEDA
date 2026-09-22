@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Bóveda — Gestor de Contraseñas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171c;
+    --surface:#1b1f26;
+    --surface-2:#232830;
+    --surface-3:#2a303a;
+    --border:#2c323c;
+    --text:#e8e6e1;
+    --text-dim:#8b92a0;
+    --text-faint:#5a6272;
+    --accent:#c9a227;
+    --accent-dim:#8a7020;
+    --accent-bg:#2a2415;
+    --danger:#c1554a;
+    --danger-bg:#2a1e1c;
+    --success:#5a9b6f;
+    --radius:3px;
+    --serif:'Source Serif 4', Georgia, serif;
+    --sans:'Inter', system-ui, sans-serif;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --type-password:#c9a227; --type-password-bg:#2a2415;
+    --type-card:#5b8fc9; --type-card-bg:#18212e;
+    --type-note:#5a9b6f; --type-note-bg:#182620;
+    --type-id:#9b7fc9; --type-id-bg:#211a2e;
+    --type-passkey:#4fb0a5; --type-passkey-bg:#122622;
+    --tools-orange:#e68e3c;
+  }
+  body.theme-light{
+    --bg:#f4f2ec; --surface:#ffffff; --surface-2:#f1eee6; --surface-3:#e7e2d6; --border:#ddd6c6;
+    --text:#211f1a; --text-dim:#5c5648; --text-faint:#928c7a;
+    --accent-bg:#faf1d4; --danger-bg:#fbe6e2;
+    --type-password-bg:#faf1d4;
+    --type-card-bg:#e6eefb;
+    --type-note-bg:#e5f3ea;
+    --type-id-bg:#f0eafb;
+  }
+  body.accent-blue{ --accent:#4c8dff; --accent-dim:#3568c2; --accent-bg:#182238; --type-password:#4c8dff; --type-password-bg:#182238; }
+  body.accent-green{ --accent:#3fb87a; --accent-dim:#2c8a5a; --accent-bg:#132a1f; --type-password:#3fb87a; --type-password-bg:#132a1f; }
+  body.accent-purple{ --accent:#a374e6; --accent-dim:#7c53b8; --accent-bg:#251b33; --type-password:#a374e6; --type-password-bg:#251b33; }
+  body.accent-red{ --accent:#e35d5d; --accent-dim:#b84545; --accent-bg:#2e1717; --type-password:#e35d5d; --type-password-bg:#2e1717; }
+  body.accent-pink{ --accent:#e668a8; --accent-dim:#b84f85; --accent-bg:#2e1622; --type-password:#e668a8; --type-password-bg:#2e1622; }
+  body.theme-light.accent-blue{ --accent-bg:#e5eefe; --type-password-bg:#e5eefe; }
+  body.theme-light.accent-green{ --accent-bg:#e2f6ea; --type-password-bg:#e2f6ea; }
+  body.theme-light.accent-purple{ --accent-bg:#f2eafc; --type-password-bg:#f2eafc; }
+  body.theme-light.accent-red{ --accent-bg:#fce9e9; --type-password-bg:#fce9e9; }
+  body.theme-light.accent-pink{ --accent-bg:#fcebf3; --type-password-bg:#fcebf3; }
+  .accent-swatch-grid{ display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; }
+  .accent-swatch{
+    width:38px; height:38px; border-radius:50%; border:2px solid transparent; cursor:pointer; position:relative;
+  }
+  .accent-swatch.active{ border-color:var(--text); }
+  .accent-swatch.active::after{ content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+  .theme-toggle-row{ display:flex; gap:10px; margin-bottom:20px; }
+  .theme-toggle-row button{ flex:1; padding:10px; border-radius:var(--radius); border:1px solid var(--border); background:var(--surface-2); color:var(--text-dim); font-size:13px; font-weight:500; }
+  .theme-toggle-row button.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+  .card-color-grid{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; margin-bottom:4px; }
+  .card-color-swatch{ width:32px; height:32px; border-radius:8px; border:2px solid transparent; cursor:pointer; position:relative; }
+  .card-color-swatch.active{ border-color:var(--text); }
+  .card-color-swatch.active::after{ content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:14px;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  button{font-family:inherit; cursor:pointer;}
+  input, textarea, select{font-family:inherit; color:var(--text); background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:9px 11px; font-size:14px; outline:none; width:100%;}
+  input:focus, textarea:focus, select:focus{border-color:var(--accent-dim);}
+  ::selection{background:var(--accent-dim); color:#fff;}
+
+  /* ---------- Lock screen ---------- */
+  #lock-screen{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 30%, var(--surface) 0%, var(--bg) 70%);
+  }
+  .lock-card{
+    width:340px; padding:40px 32px; text-align:center;
+  }
+  .vault-glyph{
+    width:44px; height:44px; margin:0 auto 20px; opacity:.9;
+  }
+  .lock-card h1{
+    font-family:var(--serif); font-weight:600; font-size:22px; letter-spacing:.2px; margin-bottom:4px;
+  }
+  .lock-sub{ color:var(--text-dim); font-size:13px; margin-bottom:28px; }
+  .lock-card input{ text-align:center; letter-spacing:1px; margin-bottom:12px; }
+  .lock-card .field-label{ text-align:left; font-size:12px; color:var(--text-faint); margin:0 0 6px 2px; }
+  .btn{
+    width:100%; padding:11px; border-radius:var(--radius); border:none;
+    background:var(--accent); color:#1a1607; font-weight:600; font-size:14px; letter-spacing:.2px;
+    transition:background .15s;
+  }
+  .btn:hover{ background:#ddb531; }
+  .btn:disabled{ background:var(--surface-3); color:var(--text-faint); cursor:default; }
+  .btn-ghost{
+    background:transparent; border:1px solid var(--border); color:var(--text-dim); font-weight:500;
+  }
+  .btn-ghost:hover{ border-color:var(--text-faint); color:var(--text); }
+  .btn-danger{ background:var(--danger); color:#fff; }
+  .btn-danger:hover{ background:#d4655a; }
+  .lock-error{ color:var(--danger); font-size:13px; margin-top:10px; min-height:16px; }
+  .lock-switch{ margin-top:22px; font-size:12.5px; color:var(--text-faint); }
+  .lock-switch a{ color:var(--accent); text-decoration:none; cursor:pointer; }
+  .strength-bar{ height:3px; background:var(--surface-3); border-radius:2px; margin:-4px 0 14px; overflow:hidden; }
+  .strength-fill{ height:100%; width:0%; transition:width .2s, background .2s; }
+
+  /* ---------- App shell ---------- */
+  #app{ display:none; height:100vh; grid-template-columns:220px 340px 1fr; }
+  #app.active{ display:grid; }
+
+  .col-nav{ background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:18px 12px; }
+  .brand{ font-family:var(--serif); font-size:16px; font-weight:600; padding:4px 10px 22px; display:flex; align-items:center; gap:8px; }
+  .brand svg{ flex-shrink:0; }
+  .nav-item{
+    display:flex; align-items:center; justify-content:space-between; padding:9px 10px; border-radius:var(--radius);
+    color:var(--text-dim); font-size:13.5px; cursor:pointer; margin-bottom:2px;
+  }
+  .nav-item:hover{ background:var(--surface-2); color:var(--text); }
+  .nav-item.active{ background:var(--surface-2); color:var(--text); font-weight:500; }
+  .nav-item .count{ font-size:11.5px; color:var(--text-faint); font-family:var(--mono); }
+  .nav-section-label{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); padding:16px 10px 6px; }
+  .nav-bottom{ margin-top:auto; padding-top:12px; border-top:1px solid var(--border); }
+
+  .col-list{ background:var(--bg); border-right:1px solid var(--border); display:flex; flex-direction:column; }
+  .list-header{ padding:16px 16px 12px; border-bottom:1px solid var(--border); }
+  .search-box{ position:relative; }
+  .search-box input{ padding-left:32px; background:var(--surface); }
+  .search-box svg{ position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.5; }
+  .new-entry-btn{
+    width:100%; margin-top:10px; padding:9px; border-radius:var(--radius); border:1px dashed var(--border);
+    background:transparent; color:var(--text-dim); font-size:13px; font-weight:500;
+  }
+  .new-entry-btn:hover{ border-color:var(--accent-dim); color:var(--accent); }
+  .entry-list{ flex:1; overflow-y:auto; }
+  .entry-row{
+    padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer; display:flex; gap:11px; align-items:flex-start;
+  }
+  .entry-row:hover{ background:var(--surface); }
+  .entry-row.selected{ background:var(--surface-2); border-left:2px solid var(--accent); padding-left:14px; }
+  .entry-icon{
+    width:30px; height:30px; border-radius:var(--radius); background:var(--surface-2); display:flex; align-items:center;
+    justify-content:center; flex-shrink:0; font-family:var(--serif); font-size:13px; font-weight:600; color:var(--text-dim);
+  }
+  .entry-icon.t-password{ background:var(--type-password-bg); color:var(--type-password); }
+  .entry-icon.t-card{ background:var(--type-card-bg); color:var(--type-card); }
+  .entry-icon.t-note{ background:var(--type-note-bg); color:var(--type-note); }
+  .entry-icon.t-id{ background:var(--type-id-bg); color:var(--type-id); }
+  .entry-icon.t-passkey{ background:var(--type-passkey-bg); color:var(--type-passkey); }
+  .type-pill{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; padding:3px 8px; border-radius:2px; margin-top:6px; }
+  .type-pill.t-password{ background:var(--type-password-bg); color:var(--type-password); }
+  .type-pill.t-card{ background:var(--type-card-bg); color:var(--type-card); }
+  .type-pill.t-note{ background:var(--type-note-bg); color:var(--type-note); }
+  .type-pill.t-id{ background:var(--type-id-bg); color:var(--type-id); }
+  .type-pill.t-passkey{ background:var(--type-passkey-bg); color:var(--type-passkey); }
+  .type-picker-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .type-picker-btn{
+    display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:16px 14px; border-radius:6px;
+    border:1px solid var(--border); background:var(--surface-2); text-align:left;
+  }
+  .type-picker-btn:active{ transform:scale(.98); }
+  .type-picker-btn .tp-icon{ width:34px; height:34px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .type-picker-btn .tp-label{ font-size:13.5px; font-weight:500; color:var(--text); }
+  .type-picker-btn.t-password .tp-icon{ background:var(--type-password-bg); color:var(--type-password); }
+  .type-picker-btn.t-card .tp-icon{ background:var(--type-card-bg); color:var(--type-card); }
+  .type-picker-btn.t-note .tp-icon{ background:var(--type-note-bg); color:var(--type-note); }
+  .type-picker-btn.t-id .tp-icon{ background:var(--type-id-bg); color:var(--type-id); }
+  .type-picker-btn.t-passkey .tp-icon{ background:var(--type-passkey-bg); color:var(--type-passkey); }
+  .tools-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .tool-card{
+    display:flex; flex-direction:column; align-items:flex-start; gap:16px; padding:18px 14px; border-radius:12px;
+    background:rgba(230,142,60,.10); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%);
+    border:1px solid rgba(230,142,60,.32); text-align:left; box-shadow:0 4px 18px rgba(0,0,0,.15);
+  }
+  .tool-card:active{ transform:scale(.97); }
+  .tool-card .tc-icon{
+    width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(230,142,60,.22); color:var(--tools-orange); font-size:17px;
+  }
+  .tool-card .tc-label{ font-size:13px; font-weight:500; color:var(--text); line-height:1.3; }
+  .entry-meta{ min-width:0; flex:1; }
+  .entry-title{ font-size:13.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entry-sub{ font-size:12px; color:var(--text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+  .empty-state{ padding:40px 20px; text-align:center; color:var(--text-faint); font-size:13px; }
+
+  .col-detail{ overflow-y:auto; padding:32px 40px; }
+  .detail-placeholder{ height:100%; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-family:var(--serif); font-size:15px; text-align:center; flex-direction:column; gap:10px; }
+  .detail-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
+  .detail-title{ font-family:var(--serif); font-size:24px; font-weight:600; }
+  .detail-cat-tag{ display:inline-block; margin-top:6px; font-size:11.5px; color:var(--accent); background:var(--accent-bg); padding:3px 8px; border-radius:2px; }
+  .detail-actions{ display:flex; gap:8px; }
+  .icon-btn{ width:32px; height:32px; border-radius:var(--radius); border:1px solid var(--border); background:transparent; display:flex; align-items:center; justify-content:center; color:var(--text-dim); }
+  .icon-btn:hover{ background:var(--surface-2); color:var(--text); }
+  .field-group{ margin-bottom:16px; }
+  .field-row{
+    display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:11px 12px; margin-bottom:8px;
+  }
+  .field-row .fr-label{ font-size:11px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; width:88px; flex-shrink:0; }
+  .field-row .fr-value{ flex:1; font-family:var(--mono); font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .field-row.secret .fr-value{ letter-spacing:1px; }
+  .field-row .fr-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .mini-btn{ width:26px; height:26px; border-radius:2px; border:none; background:transparent; color:var(--text-faint); display:flex; align-items:center; justify-content:center; }
+  .mini-btn:hover{ background:var(--surface-3); color:var(--text); }
+  .notes-box{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; font-size:13.5px; color:var(--text-dim); line-height:1.6; white-space:pre-wrap; }
+
+  /* ---------- Editor / Modal ---------- */
+  .overlay{ position:fixed; inset:0; background:rgba(10,12,15,.7); display:none; align-items:center; justify-content:center; z-index:50; }
+  .overlay.active{ display:flex; }
+  .modal{ background:var(--surface); border:1px solid var(--border); border-radius:6px; width:460px; max-height:86vh; display:flex; flex-direction:column; }
+  .modal-header{ padding:18px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .modal-header h2{ font-family:var(--serif); font-size:17px; font-weight:600; }
+  .modal-body{ padding:20px; overflow-y:auto; }
+  .modal-footer{ padding:16px 20px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+  .form-label{ font-size:12px; color:var(--text-faint); margin:0 0 6px 1px; display:block; }
+  .form-row{ margin-bottom:14px; }
+  .pw-input-wrap{ position:relative; }
+  .pw-input-wrap input{ padding-right:76px; font-family:var(--mono); }
+  .pw-input-actions{ position:absolute; right:6px; top:50%; transform:translateY(-50%); display:flex; gap:2px; }
+  .custom-field-row{ display:flex; gap:6px; margin-bottom:8px; }
+  .custom-field-row input:first-child{ width:110px; flex-shrink:0; }
+  .add-field-btn{ font-size:12.5px; color:var(--text-dim); background:transparent; border:1px dashed var(--border); border-radius:var(--radius); padding:7px 10px; width:100%; }
+  .add-field-btn:hover{ color:var(--accent); border-color:var(--accent-dim); }
+  select#cat-select, select#f-category{ appearance:none; }
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(10px); background:var(--surface-3);
+    border:1px solid var(--border); color:var(--text); padding:9px 16px; border-radius:var(--radius); font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:100;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width: 860px){
+    #app.active{ display:block; position:relative; height:100vh; }
+    .col-nav{
+      position:fixed; top:0; left:0; bottom:0; width:78%; max-width:300px; z-index:60;
+      transform:translateX(-100%); transition:transform .2s ease; box-shadow:2px 0 24px rgba(0,0,0,.4);
+    }
+    .col-nav.open{ transform:translateX(0); }
+    .nav-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:55; display:none; }
+    .nav-backdrop.open{ display:block; }
+    .col-list{ height:100%; border-right:none; }
+    .col-detail{
+      position:fixed; inset:0; background:var(--bg); z-index:30; padding:20px 18px 24px;
+      display:none; overflow-y:auto;
+    }
+    #app.show-detail .col-detail{ display:block; }
+    .mobile-menu-btn{
+      width:36px; height:36px; flex-shrink:0; border-radius:var(--radius); border:1px solid var(--border);
+      background:var(--surface); color:var(--text-dim); display:flex; align-items:center; justify-content:center; font-size:16px;
+    }
+    .list-header{ display:flex; align-items:center; gap:8px; }
+    .list-header .search-box{ flex:1; }
+    .list-header-row{ display:flex; gap:8px; align-items:center; }
+    .mobile-back-btn{
+      display:flex; align-items:center; gap:6px; color:var(--text-dim); font-size:13px; margin-bottom:18px;
+      background:transparent; border:none;
+    }
+    .modal{ width:92vw !important; max-width:420px; }
+  }
+  .mobile-back-btn, .mobile-menu-btn{ display:none; }
+  @media (max-width: 860px){
+    .mobile-back-btn{ display:flex; }
+    .mobile-menu-btn{ display:flex; }
+  }
+</style>
+</head>
+<body>
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
+<!-- ================= LOCK SCREEN ================= -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <svg class="vault-glyph" viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="21" stroke="#c9a227" stroke-width="1.4"/>
+      <circle cx="24" cy="24" r="7" stroke="#c9a227" stroke-width="1.4"/>
+      <line x1="24" y1="17" x2="24" y2="12" stroke="#c9a227" stroke-width="1.4"/>
+      <line x1="24" y1="36" x2="24" y2="31" stroke="#c9a227" stroke-width="1.4"/>
+      <line x1="17" y1="24" x2="12" y2="24" stroke="#c9a227" stroke-width="1.4"/>
+      <line x1="36" y1="24" x2="31" y2="24" stroke="#c9a227" stroke-width="1.4"/>
+    </svg>
+
+    <!-- First-run: create vault -->
+    <div id="setup-view">
+      <h1>Crea tu bóveda</h1>
+      <p class="lock-sub">Esta contraseña maestra cifra todo. Si la olvidas, no hay forma de recuperar los datos.</p>
+      <label class="field-label">Contraseña maestra</label>
+      <input type="password" id="setup-pw" autocomplete="new-password" placeholder="••••••••••">
+      <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+      <label class="field-label">Confirmar contraseña</label>
+      <input type="password" id="setup-pw2" autocomplete="new-password" placeholder="••••••••••">
+      <div style="height:12px"></div>
+      <button class="btn" id="setup-btn">Crear bóveda</button>
+      <div class="lock-error" id="setup-error"></div>
+    </div>
+
+    <!-- Returning: unlock -->
+    <div id="unlock-view" style="display:none;">
+      <h1>Bóveda bloqueada</h1>
+      <p class="lock-sub">Introduce tu contraseña maestra para continuar.</p>
+      <input type="password" id="unlock-pw" autocomplete="current-password" placeholder="Contraseña maestra">
+      <div style="height:6px"></div>
+      <button class="btn" id="unlock-btn">Desbloquear</button>
+      <button class="btn btn-ghost" id="unlock-biometric-btn" style="margin-top:10px; display:none;">👆 Usar huella / Face ID</button>
+      <div class="lock-error" id="unlock-error"></div>
+      <div class="lock-switch">¿No es tu bóveda? <a id="reset-link">Borrar y empezar de nuevo</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app">
+  <!-- Nav column -->
+  <div class="col-nav">
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="21" stroke="#c9a227" stroke-width="2"/><circle cx="24" cy="24" r="7" stroke="#c9a227" stroke-width="2"/></svg>
+      Bóveda
+    </div>
+    <div class="nav-section-label">Tipos</div>
+    <div id="nav-categories"></div>
+    <div class="nav-bottom">
+      <div class="nav-item" id="nav-tools">🛠️ Herramientas</div>
+      <div class="nav-item" id="nav-security">🛡️ Seguridad</div>
+      <div class="nav-item" id="nav-theme">🎨 Apariencia</div>
+      <div class="nav-item" id="nav-onedrive">☁️ <span id="onedrive-label">Conectar OneDrive</span></div>
+      <div class="nav-item" id="nav-generator">🎲 Generador</div>
+      <div class="nav-item" id="nav-lock">🔒 Bloquear ahora</div>
+    </div>
+  </div>
+
+  <!-- List column -->
+  <div class="col-list">
+    <div class="list-header">
+    <div class="list-header-row">
+      <button class="mobile-menu-btn" id="mobile-menu-btn">☰</button>
+      <div class="search-box" style="flex:1;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" placeholder="Buscar en la bóveda…">
+      </div>
+    </div>
+      <button class="new-entry-btn" id="new-entry-btn">+ Nueva entrada</button>
+    </div>
+    <div class="entry-list" id="entry-list"></div>
+  </div>
+
+  <!-- Detail column -->
+  <div class="col-detail" id="detail-pane">
+    <div class="detail-placeholder">
+      <div>Selecciona una entrada</div>
+      <div style="font-size:12.5px; color:var(--text-faint); font-family:var(--sans);">o crea una nueva para empezar</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TYPE PICKER MODAL ================= -->
+<div class="overlay" id="type-picker-overlay">
+  <div class="modal" style="width:340px;">
+    <div class="modal-header">
+      <h2>Nueva entrada</h2>
+      <button class="icon-btn" id="type-picker-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-picker-grid">
+        <button class="type-picker-btn t-password" data-type="password">
+          <div class="tp-icon">🔑</div><div class="tp-label">Contraseña</div>
+        </button>
+        <button class="type-picker-btn t-card" data-type="card">
+          <div class="tp-icon">💳</div><div class="tp-label">Tarjeta de pago</div>
+        </button>
+        <button class="type-picker-btn t-note" data-type="note">
+          <div class="tp-icon">📝</div><div class="tp-label">Nota segura</div>
+        </button>
+        <button class="type-picker-btn t-id" data-type="id">
+          <div class="tp-icon">🪪</div><div class="tp-label">Identidad</div>
+        </button>
+        <button class="type-picker-btn t-passkey" data-type="passkey">
+          <div class="tp-icon">🗝️</div><div class="tp-label">Llave de acceso</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ENTRY EDITOR MODAL ================= -->
+<div class="overlay" id="editor-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="editor-title">Nueva entrada</h2>
+      <button class="icon-btn" id="editor-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">Título</label>
+        <input type="text" id="f-title" placeholder="p. ej. Correo personal">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Categoría</label>
+        <select id="f-category"></select>
+      </div>
+
+      <!-- Password type fields -->
+      <div id="fields-password">
+        <div class="form-row">
+          <label class="form-label">Usuario</label>
+          <input type="text" id="f-username" placeholder="usuario o correo">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Contraseña</label>
+          <div class="pw-input-wrap">
+            <input type="password" id="f-password">
+            <div class="pw-input-actions">
+              <button class="mini-btn" id="f-pw-toggle" title="Mostrar">👁</button>
+              <button class="mini-btn" id="f-pw-generate" title="Generar">🎲</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">URL</label>
+          <input type="text" id="f-url" placeholder="https://">
+        </div>
+      </div>
+
+      <!-- Card type fields -->
+      <div id="fields-card" style="display:none;">
+        <div class="form-row">
+          <label class="form-label">Color de la tarjeta</label>
+          <div class="card-color-grid" id="card-color-grid"></div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Titular de la tarjeta</label>
+          <input type="text" id="f-card-holder" placeholder="Nombre como aparece en la tarjeta">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Número de tarjeta</label>
+          <input type="text" id="f-card-number" inputmode="numeric" placeholder="0000 0000 0000 0000" style="font-family:var(--mono);">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="form-row" style="flex:1;">
+            <label class="form-label">Vencimiento</label>
+            <input type="text" id="f-card-expiry" placeholder="MM/AA">
+          </div>
+          <div class="form-row" style="flex:1;">
+            <label class="form-label">CVV</label>
+            <input type="text" id="f-card-cvv" inputmode="numeric" placeholder="123" style="font-family:var(--mono);">
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">PIN (opcional)</label>
+          <input type="text" id="f-card-pin" inputmode="numeric" style="font-family:var(--mono);">
+        </div>
+      </div>
+
+      <!-- Note type fields -->
+      <div id="fields-note" style="display:none;">
+        <div class="form-row">
+          <label class="form-label">Contenido</label>
+          <textarea id="f-note-content" rows="6" placeholder="Escribe tu nota segura…"></textarea>
+        </div>
+      </div>
+
+      <!-- ID type fields -->
+      <div id="fields-id" style="display:none;">
+        <div class="form-row">
+          <label class="form-label">Tipo de documento</label>
+          <select id="f-id-doctype">
+            <option value="INE/DNI">INE / DNI</option>
+            <option value="Pasaporte">Pasaporte</option>
+            <option value="Licencia">Licencia de conducir</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Nombre completo</label>
+          <input type="text" id="f-id-name">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Número de documento</label>
+          <input type="text" id="f-id-number" style="font-family:var(--mono);">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="form-row" style="flex:1;">
+            <label class="form-label">Fecha de emisión</label>
+            <input type="text" id="f-id-issue" placeholder="DD/MM/AAAA">
+          </div>
+          <div class="form-row" style="flex:1;">
+            <label class="form-label">Fecha de vencimiento</label>
+            <input type="text" id="f-id-expiry" placeholder="DD/MM/AAAA">
+          </div>
+        </div>
+      </div>
+
+      <!-- Passkey type fields -->
+      <div id="fields-passkey" style="display:none;">
+        <p style="color:var(--text-faint); font-size:12px; line-height:1.5; margin-bottom:14px; background:var(--surface); padding:10px; border-radius:var(--radius); border:1px solid var(--border);">
+          Esto es solo un recordatorio de qué cuenta usa passkey — la llave real no se puede exportar ni guardar aquí, vive protegida en tu teléfono o navegador.
+        </p>
+        <div class="form-row">
+          <label class="form-label">Cuenta / correo</label>
+          <input type="text" id="f-passkey-account" placeholder="cuenta@ejemplo.com">
+        </div>
+        <div class="form-row">
+          <label class="form-label">Dispositivo donde está guardada</label>
+          <input type="text" id="f-passkey-device" placeholder="p. ej. este teléfono, llave física YubiKey…">
+        </div>
+      </div>
+
+      <div class="form-row" id="custom-fields-row">
+        <label class="form-label">Campos personalizados</label>
+        <div id="custom-fields-container"></div>
+        <button class="add-field-btn" id="add-custom-field">+ Añadir campo</button>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notas</label>
+        <textarea id="f-notes" rows="3" placeholder="Notas adicionales…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost btn" id="editor-cancel" style="width:auto; padding:9px 16px;">Cancelar</button>
+      <button class="btn" id="editor-save" style="width:auto; padding:9px 18px;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GENERATOR MODAL ================= -->
+<div class="overlay" id="gen-overlay">
+  <div class="modal" style="width:380px;">
+    <div class="modal-header">
+      <h2>Generador de contraseñas</h2>
+      <button class="icon-btn" id="gen-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pw-input-wrap" style="margin-bottom:18px;">
+        <input type="text" id="gen-output" readonly style="font-size:15px; padding-right:40px;">
+        <div class="pw-input-actions">
+          <button class="mini-btn" id="gen-copy" title="Copiar">⧉</button>
+        </div>
+      </div>
+      <div class="form-row" style="display:flex; justify-content:space-between; align-items:center;">
+        <label class="form-label" style="margin:0;">Longitud: <span id="gen-length-val">18</span></label>
+      </div>
+      <input type="range" id="gen-length" min="8" max="64" value="18" style="width:100%; margin-bottom:16px; accent-color:#c9a227;">
+      <div class="form-row" style="display:flex; flex-direction:column; gap:8px;">
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim);"><input type="checkbox" id="gen-upper" checked style="width:auto;"> Mayúsculas (A–Z)</label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim);"><input type="checkbox" id="gen-lower" checked style="width:auto;"> Minúsculas (a–z)</label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim);"><input type="checkbox" id="gen-nums" checked style="width:auto;"> Números (0–9)</label>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim);"><input type="checkbox" id="gen-symbols" checked style="width:auto;"> Símbolos (!@#$…)</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="gen-regenerate" style="width:auto; padding:9px 16px;">↻ Regenerar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ONEDRIVE MODAL ================= -->
+<div class="overlay" id="od-overlay">
+  <div class="modal" style="width:360px;">
+    <div class="modal-header">
+      <h2>OneDrive</h2>
+      <button class="icon-btn" id="od-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="od-disconnected-view">
+        <p style="color:var(--text-dim); font-size:13.5px; line-height:1.6; margin-bottom:16px;">
+          Conecta tu OneDrive para guardar una copia cifrada de tu bóveda en la nube y sincronizarla entre dispositivos.
+        </p>
+        <button class="btn" id="od-connect-btn">Conectar con OneDrive</button>
+      </div>
+      <div id="od-connected-view" style="display:none;">
+        <p style="color:var(--success); font-size:13px; margin-bottom:4px;">● Conectado a OneDrive</p>
+        <p id="od-account-email" style="color:var(--text-faint); font-size:12.5px; margin-bottom:18px;"></p>
+        <p id="od-last-sync" style="color:var(--text-faint); font-size:12px; margin-bottom:16px;"></p>
+        <button class="btn" id="od-upload-btn" style="margin-bottom:8px;">↑ Subir bóveda a OneDrive</button>
+        <button class="btn btn-ghost" id="od-download-btn" style="margin-bottom:8px;">↓ Descargar bóveda de OneDrive</button>
+        <button class="btn btn-ghost" id="od-disconnect-btn" style="color:var(--danger); border-color:var(--danger-bg);">Desconectar</button>
+      </div>
+      <div id="od-status-msg" style="margin-top:12px; font-size:12.5px; color:var(--text-faint);"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SECURITY MODAL ================= -->
+<div class="overlay" id="sec-overlay">
+  <div class="modal" style="width:360px;">
+    <div class="modal-header">
+      <h2>Seguridad</h2>
+      <button class="icon-btn" id="sec-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center; margin-bottom:22px;">
+        <div id="sec-score" style="font-family:var(--serif); font-size:44px; font-weight:700;">—</div>
+        <div style="color:var(--text-faint); font-size:12.5px;">puntuación de seguridad</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:2px;">
+          <div id="sec-weak" style="font-size:22px; font-weight:700; color:var(--danger);">0</div>
+          <div style="font-size:11.5px; color:var(--text-faint);">Débiles</div>
+        </div>
+        <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:2px;">
+          <div id="sec-reused" style="font-size:22px; font-weight:700; color:var(--accent);">0</div>
+          <div style="font-size:11.5px; color:var(--text-faint);">Reutilizadas</div>
+        </div>
+        <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:2px;">
+          <div id="sec-total" style="font-size:22px; font-weight:700;">0</div>
+          <div style="font-size:11.5px; color:var(--text-faint);">Total contraseñas</div>
+        </div>
+        <div class="field-row" style="flex-direction:column; align-items:flex-start; gap:2px;">
+          <div id="sec-ok" style="font-size:22px; font-weight:700; color:var(--success);">0</div>
+          <div style="font-size:11.5px; color:var(--text-faint);">Seguras</div>
+        </div>
+      </div>
+      <div id="sec-weak-list" style="margin-top:16px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TOOLS MODAL ================= -->
+<div class="overlay" id="tools-overlay">
+  <div class="modal" style="width:360px;">
+    <div class="modal-header">
+      <h2>Herramientas</h2>
+      <button class="icon-btn" id="tools-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tools-grid">
+        <button class="tool-card" id="tool-generate">
+          <div class="tc-icon">🎲</div><div class="tc-label">Generar<br>contraseña</div>
+        </button>
+        <button class="tool-card" id="tool-change-pw">
+          <div class="tc-icon">🔑</div><div class="tc-label">Cambiar contraseña<br>maestra</div>
+        </button>
+        <button class="tool-card" id="tool-cloud">
+          <div class="tc-icon">☁️</div><div class="tc-label">Configurar<br>la nube</div>
+        </button>
+        <button class="tool-card" id="tool-export">
+          <div class="tc-icon">⬇️</div><div class="tc-label">Exportar<br>bóveda</div>
+        </button>
+        <button class="tool-card" id="tool-import">
+          <div class="tc-icon">⬆️</div><div class="tc-label">Importar<br>contraseñas</div>
+        </button>
+        <button class="tool-card" id="tool-biometric">
+          <div class="tc-icon">👆</div><div class="tc-label" id="tool-biometric-label">Desbloqueo<br>con huella</div>
+        </button>
+      </div>
+      <input type="file" id="import-file-input" accept=".csv" style="display:none;">
+    </div>
+  </div>
+</div>
+
+<!-- ================= CHANGE MASTER PASSWORD MODAL ================= -->
+<div class="overlay" id="chpw-overlay">
+  <div class="modal" style="width:340px;">
+    <div class="modal-header">
+      <h2>Cambiar contraseña maestra</h2>
+      <button class="icon-btn" id="chpw-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-dim); font-size:13px; line-height:1.6; margin-bottom:16px;">
+        Vuelve a cifrar toda tu bóveda con una nueva contraseña maestra. Úsala también la próxima vez que sincronices con OneDrive.
+      </p>
+      <div class="form-row">
+        <label class="form-label">Nueva contraseña</label>
+        <input type="password" id="chpw-new" autocomplete="new-password">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Confirmar contraseña</label>
+        <input type="password" id="chpw-confirm" autocomplete="new-password">
+      </div>
+      <div class="lock-error" id="chpw-error" style="text-align:left;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost btn" id="chpw-cancel" style="width:auto; padding:9px 16px;">Cancelar</button>
+      <button class="btn" id="chpw-save" style="width:auto; padding:9px 18px;">Actualizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APPEARANCE MODAL ================= -->
+<div class="overlay" id="appearance-overlay">
+  <div class="modal" style="width:340px;">
+    <div class="modal-header">
+      <h2>Apariencia</h2>
+      <button class="icon-btn" id="appearance-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <label class="form-label">Modo</label>
+      <div class="theme-toggle-row">
+        <button id="mode-dark-btn">🌙 Oscuro</button>
+        <button id="mode-light-btn">☀️ Claro</button>
+      </div>
+      <label class="form-label">Color de acento</label>
+      <div class="accent-swatch-grid" id="accent-swatch-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BIOMETRIC MODAL ================= -->
+<div class="overlay" id="bio-overlay">
+  <div class="modal" style="width:340px;">
+    <div class="modal-header">
+      <h2>Desbloqueo con huella</h2>
+      <button class="icon-btn" id="bio-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="bio-unsupported" style="display:none;">
+        <p style="color:var(--text-dim); font-size:13.5px; line-height:1.6;">
+          Tu navegador o dispositivo no soporta biometría web (WebAuthn). Prueba desde Chrome o el navegador nativo de tu teléfono.
+        </p>
+      </div>
+      <div id="bio-off-view" style="display:none;">
+        <p style="color:var(--text-dim); font-size:13.5px; line-height:1.6; margin-bottom:16px;">
+          Confirma tu contraseña maestra para activar el desbloqueo rápido con huella o Face ID en este dispositivo.
+        </p>
+        <div class="form-row">
+          <label class="form-label">Contraseña maestra actual</label>
+          <input type="password" id="bio-confirm-pw">
+        </div>
+        <div class="lock-error" id="bio-error" style="text-align:left; margin-bottom:10px;"></div>
+        <button class="btn" id="bio-enable-btn">Activar con huella</button>
+      </div>
+      <div id="bio-on-view" style="display:none;">
+        <p style="color:var(--success); font-size:13px; margin-bottom:16px;">● Activo en este dispositivo</p>
+        <button class="btn btn-ghost" id="bio-disable-btn" style="color:var(--danger); border-color:var(--danger-bg);">Desactivar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ CRYPTO LAYER (AES-256-GCM + PBKDF2) ============ */
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  function b64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+  function unb64(str){ return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
+  async function deriveKey(password, salt){
+    const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      { name:"PBKDF2", salt, iterations:300000, hash:"SHA-256" },
+      keyMaterial,
+      { name:"AES-GCM", length:256 },
+      false,
+      ["encrypt","decrypt"]
+    );
+  }
+
+  async function encryptVault(vaultObj, key){
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = enc.encode(JSON.stringify(vaultObj));
+    const cipher = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, key, data);
+    return { iv: b64(iv), data: b64(cipher) };
+  }
+
+  async function decryptVault(blob, key){
+    const iv = unb64(blob.iv);
+    const cipher = unb64(blob.data);
+    const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv }, key, cipher);
+    return JSON.parse(dec.decode(plain));
+  }
+
+  /* ============ STATE ============ */
+  const STORAGE_SALT = "vault_salt_v1";
+  const STORAGE_BLOB = "vault_blob_v1";
+  const AUTO_LOCK_MS = 5 * 60 * 1000;
+
+  let sessionKey = null;
+  let vault = null; // { categories:[], entries:[] }
+  let selectedEntryId = null;
+  let activeCategory = "all";
+  let editingEntryId = null;
+  let autoLockTimer = null;
+
+  const DEFAULT_CATEGORIES = [
+    { id:"logins", name:"Inicios de sesión" },
+    { id:"cards", name:"Tarjetas" },
+    { id:"notes", name:"Notas seguras" },
+    { id:"identity", name:"Identidad" }
+  ];
+
+  /* ============ DOM ============ */
+  const $ = id => document.getElementById(id);
+  const lockScreen = $("lock-screen");
+  const setupView = $("setup-view");
+  const unlockView = $("unlock-view");
+  const appEl = $("app");
+
+  function toast(msg){
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>t.classList.remove("show"), 1800);
+  }
+
+  /* ============ INIT / SETUP FLOW ============ */
+  function hasVault(){ return !!localStorage.getItem(STORAGE_BLOB); }
+
+  function initLockScreen(){
+    if(hasVault()){
+      setupView.style.display = "none";
+      unlockView.style.display = "block";
+      $("unlock-pw").focus();
+    } else {
+      setupView.style.display = "block";
+      unlockView.style.display = "none";
+      $("setup-pw").focus();
+    }
+  }
+
+  function pwStrength(pw){
+    let score = 0;
+    if(pw.length >= 8) score++;
+    if(pw.length >= 12) score++;
+    if(/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if(/[0-9]/.test(pw)) score++;
+    if(/[^A-Za-z0-9]/.test(pw)) score++;
+    return Math.min(score, 5);
+  }
+
+  $("setup-pw").addEventListener("input", e=>{
+    const s = pwStrength(e.target.value);
+    const fill = $("strength-fill");
+    const pct = (s/5)*100;
+    fill.style.width = pct + "%";
+    fill.style.background = s <= 2 ? "#c1554a" : s <= 3 ? "#c9a227" : "#5a9b6f";
+  });
+
+  $("setup-btn").addEventListener("click", async ()=>{
+    const pw = $("setup-pw").value;
+    const pw2 = $("setup-pw2").value;
+    const errEl = $("setup-error");
+    errEl.textContent = "";
+    if(pw.length < 8){ errEl.textContent = "Usa al menos 8 caracteres."; return; }
+    if(pw !== pw2){ errEl.textContent = "Las contraseñas no coinciden."; return; }
+
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    sessionKey = await deriveKey(pw, salt);
+    vault = { categories: DEFAULT_CATEGORIES, entries: [] };
+    localStorage.setItem(STORAGE_SALT, b64(salt));
+    await persistVault();
+    enterApp();
+  });
+
+  $("unlock-btn").addEventListener("click", unlockAttempt);
+  $("unlock-pw").addEventListener("keydown", e=>{ if(e.key==="Enter") unlockAttempt(); });
+
+  async function unlockAttempt(){
+    const pw = $("unlock-pw").value;
+    const errEl = $("unlock-error");
+    errEl.textContent = "";
+    try{
+      const salt = unb64(localStorage.getItem(STORAGE_SALT));
+      const key = await deriveKey(pw, salt);
+      const blob = JSON.parse(localStorage.getItem(STORAGE_BLOB));
+      const data = await decryptVault(blob, key);
+      sessionKey = key;
+      vault = data;
+      enterApp();
+    }catch(err){
+      errEl.textContent = "Contraseña incorrecta.";
+    }
+  }
+
+  $("reset-link").addEventListener("click", ()=>{
+    if(confirm("Esto borrará permanentemente la bóveda de este dispositivo. ¿Continuar?")){
+      localStorage.removeItem(STORAGE_BLOB);
+      localStorage.removeItem(STORAGE_SALT);
+      initLockScreen();
+    }
+  });
+
+  function enterApp(){
+    lockScreen.style.display = "none";
+    appEl.classList.add("active");
+    renderCategories();
+    renderList();
+    resetAutoLock();
+  }
+
+  function lockNow(){
+    sessionKey = null;
+    vault = null;
+    selectedEntryId = null;
+    appEl.classList.remove("active");
+    lockScreen.style.display = "flex";
+    $("unlock-pw").value = "";
+    initLockScreen();
+  }
+
+  function resetAutoLock(){
+    clearTimeout(autoLockTimer);
+    autoLockTimer = setTimeout(lockNow, AUTO_LOCK_MS);
+  }
+  ["click","keydown","mousemove"].forEach(evt=>{
+    document.addEventListener(evt, ()=>{ if(appEl.classList.contains("active")) resetAutoLock(); });
+  });
+
+  $("nav-lock").addEventListener("click", lockNow);
+
+  /* ============ PERSIST ============ */
+  async function persistVault(){
+    const blob = await encryptVault(vault, sessionKey);
+    localStorage.setItem(STORAGE_BLOB, JSON.stringify(blob));
+  }
+
+  /* ============ CATEGORY NAV ============ */
+  const TYPE_META = {
+    password:{ label:"Contraseñas", glyph:"🔑" },
+    card:{ label:"Tarjetas de pago", glyph:"💳" },
+    note:{ label:"Notas seguras", glyph:"📝" },
+    id:{ label:"Identidad", glyph:"🪪" },
+    passkey:{ label:"Llaves de acceso", glyph:"🗝️" }
+  };
+
+  function renderCategories(){
+    const container = $("nav-categories");
+    container.innerHTML = "";
+    const allItem = document.createElement("div");
+    allItem.className = "nav-item" + (activeCategory==="all" ? " active" : "");
+    allItem.innerHTML = `<span>Todas</span><span class="count">${vault.entries.length}</span>`;
+    allItem.onclick = ()=>{ activeCategory="all"; renderCategories(); renderList(); closeMobileNav(); };
+    container.appendChild(allItem);
+
+    Object.keys(TYPE_META).forEach(t=>{
+      const count = vault.entries.filter(e=>(e.type||"password")===t).length;
+      const item = document.createElement("div");
+      item.className = "nav-item" + (activeCategory===t ? " active" : "");
+      item.innerHTML = `<span>${TYPE_META[t].glyph} ${TYPE_META[t].label}</span><span class="count">${count}</span>`;
+      item.onclick = ()=>{ activeCategory=t; renderCategories(); renderList(); closeMobileNav(); };
+      container.appendChild(item);
+    });
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement("div");
+    d.textContent = str ?? "";
+    return d.innerHTML;
+  }
+
+  /* ============ ENTRY LIST ============ */
+  function renderList(){
+    const container = $("entry-list");
+    const q = $("search-input").value.trim().toLowerCase();
+    let items = vault.entries.slice();
+    if(activeCategory !== "all") items = items.filter(e=>(e.type||"password")===activeCategory);
+    if(q) items = items.filter(e =>
+      (e.title||"").toLowerCase().includes(q) ||
+      (e.username||"").toLowerCase().includes(q) ||
+      (e.url||"").toLowerCase().includes(q)
+    );
+    items.sort((a,b)=> (a.title||"").localeCompare(b.title||""));
+
+    container.innerHTML = "";
+    if(items.length === 0){
+      container.innerHTML = `<div class="empty-state">Sin entradas aún.<br>Crea la primera con "+ Nueva entrada".</div>`;
+      return;
+    }
+    const TYPE_GLYPH = { password:"🔑", card:"💳", note:"📝", id:"🪪", passkey:"🗝️" };
+    items.forEach(entry=>{
+      const row = document.createElement("div");
+      row.className = "entry-row" + (entry.id===selectedEntryId ? " selected" : "");
+      const type = entry.type || "password";
+      const glyph = TYPE_GLYPH[type] || (entry.title||"?").trim().charAt(0).toUpperCase() || "?";
+      const subtext = type==="card" ? (entry.cardNumber ? "•••• " + entry.cardNumber.slice(-4) : "")
+        : type==="note" ? "Nota segura"
+        : type==="id" ? (entry.docType || "Identidad")
+        : type==="passkey" ? (entry.account || "Llave de acceso")
+        : (entry.username || entry.url || "");
+      row.innerHTML = `
+        <div class="entry-icon t-${type}"${type==="card"&&entry.cardColor?` style="background:${entry.cardColor}22; color:${entry.cardColor};"`:""}>${glyph}</div>
+        <div class="entry-meta">
+          <div class="entry-title">${escapeHtml(entry.title || "Sin título")}</div>
+          <div class="entry-sub">${escapeHtml(subtext)}</div>
+        </div>`;
+      row.onclick = ()=>{ selectedEntryId = entry.id; renderList(); renderDetail(); appEl.classList.add("show-detail"); };
+      container.appendChild(row);
+    });
+  }
+
+  $("search-input").addEventListener("input", renderList);
+
+  /* ============ MOBILE NAV DRAWER ============ */
+  const navBackdrop = $("nav-backdrop");
+  function openMobileNav(){ $("nav-categories").parentElement.classList.add("open"); navBackdrop.classList.add("open"); }
+  function closeMobileNav(){ $("nav-categories").parentElement.classList.remove("open"); navBackdrop.classList.remove("open"); }
+  $("mobile-menu-btn").addEventListener("click", openMobileNav);
+  navBackdrop.addEventListener("click", closeMobileNav);
+  document.querySelectorAll(".col-nav .nav-item").forEach(()=>{}); // placeholder, closes via delegation below
+  $("nav-onedrive").addEventListener("click", closeMobileNav);
+  $("nav-generator").addEventListener("click", closeMobileNav);
+  $("nav-lock").addEventListener("click", closeMobileNav);
+  $("nav-security").addEventListener("click", closeMobileNav);
+  $("nav-theme").addEventListener("click", closeMobileNav);
+  $("nav-tools").addEventListener("click", closeMobileNav);
+
+  /* ============ TOOLS PANEL ============ */
+  $("nav-tools").addEventListener("click", ()=> $("tools-overlay").classList.add("active"));
+  $("tools-close").onclick = ()=> $("tools-overlay").classList.remove("active");
+  $("tools-overlay").addEventListener("click", e=>{ if(e.target===$("tools-overlay")) $("tools-overlay").classList.remove("active"); });
+
+  $("tool-generate").onclick = ()=>{ $("tools-overlay").classList.remove("active"); openGenerator(); };
+  $("tool-cloud").onclick = ()=>{ $("tools-overlay").classList.remove("active"); odUpdateModalView(); $("od-overlay").classList.add("active"); };
+
+  $("tool-change-pw").onclick = ()=>{
+    $("tools-overlay").classList.remove("active");
+    $("chpw-new").value = ""; $("chpw-confirm").value = ""; $("chpw-error").textContent = "";
+    $("chpw-overlay").classList.add("active");
+  };
+  $("chpw-close").onclick = $("chpw-cancel").onclick = ()=> $("chpw-overlay").classList.remove("active");
+  $("chpw-overlay").addEventListener("click", e=>{ if(e.target===$("chpw-overlay")) $("chpw-overlay").classList.remove("active"); });
+  $("chpw-save").onclick = async ()=>{
+    const pw = $("chpw-new").value, pw2 = $("chpw-confirm").value;
+    const err = $("chpw-error");
+    err.textContent = "";
+    if(pw.length < 8){ err.textContent = "Usa al menos 8 caracteres."; return; }
+    if(pw !== pw2){ err.textContent = "Las contraseñas no coinciden."; return; }
+    const newSalt = crypto.getRandomValues(new Uint8Array(16));
+    const newKey = await deriveKey(pw, newSalt);
+    sessionKey = newKey;
+    localStorage.setItem(STORAGE_SALT, b64(newSalt));
+    await persistVault();
+    $("chpw-overlay").classList.remove("active");
+    toast("Contraseña maestra actualizada");
+  };
+
+  $("tool-export").onclick = ()=>{
+    $("tools-overlay").classList.remove("active");
+    const blob = localStorage.getItem(STORAGE_BLOB);
+    const salt = localStorage.getItem(STORAGE_SALT);
+    const payload = JSON.stringify({ ...JSON.parse(blob), salt }, null, 2);
+    const fileBlob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(fileBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "boveda-backup-" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("Copia de seguridad descargada (sigue cifrada)");
+  };
+
+  /* ============ IMPORT FROM BROWSER CSV ============ */
+  function parseCSV(text){
+    const rows = [];
+    let cur = [], field = "", inQuotes = false;
+    for(let i=0;i<text.length;i++){
+      const c = text[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(text[i+1] === '"'){ field += '"'; i++; } else inQuotes = false;
+        } else field += c;
+      } else {
+        if(c === '"') inQuotes = true;
+        else if(c === ','){ cur.push(field); field = ""; }
+        else if(c === "\n" || c === "\r"){
+          if(field !== "" || cur.length){ cur.push(field); rows.push(cur); cur = []; field = ""; }
+          if(c === "\r" && text[i+1] === "\n") i++;
+        } else field += c;
+      }
+    }
+    if(field !== "" || cur.length){ cur.push(field); rows.push(cur); }
+    return rows.filter(r => r.length > 1 || (r[0]||"").trim() !== "");
+  }
+
+  $("tool-import").onclick = ()=>{ $("tools-overlay").classList.remove("active"); $("import-file-input").click(); };
+  $("import-file-input").addEventListener("change", async (e)=>{
+    const file = e.target.files[0];
+    e.target.value = "";
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const rows = parseCSV(text);
+      if(rows.length < 2){ toast("El archivo no tiene datos reconocibles"); return; }
+      const header = rows[0].map(h=>h.trim().toLowerCase());
+      const idx = {
+        name: header.findIndex(h=>["name","title","nombre"].includes(h)),
+        url: header.findIndex(h=>["url","origin","website"].includes(h)),
+        user: header.findIndex(h=>["username","login","usuario","email"].includes(h)),
+        pass: header.findIndex(h=>["password","contraseña"].includes(h)),
+        note: header.findIndex(h=>["note","notes","nota","notas"].includes(h))
+      };
+      if(idx.pass === -1){ toast("No se encontró la columna de contraseña en el CSV"); return; }
+
+      const catId = vault.categories[0]?.id || "logins";
+      const imported = [];
+      for(let i=1;i<rows.length;i++){
+        const r = rows[i];
+        const password = idx.pass>=0 ? (r[idx.pass]||"").trim() : "";
+        if(!password) continue;
+        const url = idx.url>=0 ? (r[idx.url]||"").trim() : "";
+        const name = (idx.name>=0 ? (r[idx.name]||"").trim() : "") || (url ? url.replace(/^https?:\/\//,"").split("/")[0] : "Importado");
+        imported.push({
+          id: crypto.randomUUID(), type:"password", title:name, category:catId,
+          username: idx.user>=0 ? (r[idx.user]||"").trim() : "",
+          password, url,
+          notes: idx.note>=0 ? (r[idx.note]||"").trim() : "",
+          customFields: []
+        });
+      }
+      if(imported.length === 0){ toast("No se encontraron contraseñas válidas"); return; }
+      if(!confirm(`Se encontraron ${imported.length} contraseñas. ¿Importarlas a tu bóveda?`)) return;
+      vault.entries.push(...imported);
+      await persistVault();
+      renderCategories(); renderList(); renderDetail();
+      toast(`${imported.length} contraseñas importadas`);
+    }catch(err){
+      toast("No se pudo leer el archivo CSV");
+    }
+  });
+
+  /* ============ APPEARANCE (theme + accent) ============ */
+  const THEME_KEY = "theme_pref_v1";
+  const ACCENT_KEY = "accent_pref_v1";
+  const ACCENTS = [
+    { key:"gold", color:"#c9a227", label:"Dorado" },
+    { key:"blue", color:"#4c8dff", label:"Azul" },
+    { key:"green", color:"#3fb87a", label:"Verde" },
+    { key:"purple", color:"#a374e6", label:"Morado" },
+    { key:"red", color:"#e35d5d", label:"Rojo" },
+    { key:"pink", color:"#e668a8", label:"Rosa" }
+  ];
+
+  function applyTheme(theme){
+    document.body.classList.toggle("theme-light", theme === "light");
+    localStorage.setItem(THEME_KEY, theme);
+    $("mode-dark-btn").classList.toggle("active", theme === "dark");
+    $("mode-light-btn").classList.toggle("active", theme === "light");
+  }
+  function applyAccent(key){
+    ACCENTS.forEach(a=> document.body.classList.remove("accent-"+a.key));
+    if(key !== "gold") document.body.classList.add("accent-"+key);
+    localStorage.setItem(ACCENT_KEY, key);
+    document.querySelectorAll(".accent-swatch").forEach(el=> el.classList.toggle("active", el.dataset.key===key));
+  }
+  function renderAccentSwatches(){
+    const grid = $("accent-swatch-grid");
+    grid.innerHTML = "";
+    const current = localStorage.getItem(ACCENT_KEY) || "gold";
+    ACCENTS.forEach(a=>{
+      const sw = document.createElement("div");
+      sw.className = "accent-swatch" + (a.key===current ? " active" : "");
+      sw.style.background = a.color;
+      sw.dataset.key = a.key;
+      sw.title = a.label;
+      sw.onclick = ()=> applyAccent(a.key);
+      grid.appendChild(sw);
+    });
+  }
+  function initTheme(){
+    applyTheme(localStorage.getItem(THEME_KEY) || "dark");
+    applyAccent(localStorage.getItem(ACCENT_KEY) || "gold");
+  }
+  $("mode-dark-btn").onclick = ()=> applyTheme("dark");
+  $("mode-light-btn").onclick = ()=> applyTheme("light");
+  $("nav-theme").addEventListener("click", ()=>{
+    renderAccentSwatches();
+    $("appearance-overlay").classList.add("active");
+  });
+  $("appearance-close").onclick = ()=> $("appearance-overlay").classList.remove("active");
+  $("appearance-overlay").addEventListener("click", e=>{ if(e.target===$("appearance-overlay")) $("appearance-overlay").classList.remove("active"); });
+  initTheme();
+
+  /* ============ SECURITY PANEL ============ */
+  function computeSecurity(){
+    const pwEntries = vault.entries.filter(e=>(e.type||"password")==="password" && e.password);
+    const counts = {};
+    pwEntries.forEach(e=>{ counts[e.password] = (counts[e.password]||0) + 1; });
+    let weak = 0, reused = 0;
+    const weakList = [];
+    pwEntries.forEach(e=>{
+      const isWeak = pwStrength(e.password) <= 2;
+      const isReused = counts[e.password] > 1;
+      if(isWeak) weak++;
+      if(isReused) reused++;
+      if(isWeak || isReused) weakList.push({ title:e.title, isWeak, isReused });
+    });
+    const total = pwEntries.length;
+    const atRisk = new Set(weakList.map(w=>w.title)).size;
+    const ok = Math.max(0, total - atRisk);
+    const score = total === 0 ? 100 : Math.round((ok/total)*100);
+    return { total, weak, reused, ok, score, weakList };
+  }
+
+  function renderSecurityPanel(){
+    const s = computeSecurity();
+    $("sec-score").textContent = s.score + "%";
+    $("sec-score").style.color = s.score >= 80 ? "var(--success)" : s.score >= 50 ? "var(--accent)" : "var(--danger)";
+    $("sec-weak").textContent = s.weak;
+    $("sec-reused").textContent = s.reused;
+    $("sec-total").textContent = s.total;
+    $("sec-ok").textContent = s.ok;
+    const listEl = $("sec-weak-list");
+    if(s.weakList.length === 0){
+      listEl.innerHTML = s.total===0 ? "" : `<div class="empty-state" style="padding:10px 0;">Todas tus contraseñas están en buen estado.</div>`;
+    } else {
+      listEl.innerHTML = `<label class="form-label">Requieren atención</label>` + s.weakList.map(w=>
+        `<div class="field-row"><div class="fr-value" style="font-family:var(--sans);">${escapeHtml(w.title)}</div><div class="fr-actions" style="font-size:11px; color:var(--text-faint);">${[w.isWeak?"débil":"", w.isReused?"reutilizada":""].filter(Boolean).join(" · ")}</div></div>`
+      ).join("");
+    }
+  }
+  $("nav-security").addEventListener("click", ()=>{ renderSecurityPanel(); $("sec-overlay").classList.add("active"); });
+  $("sec-close").onclick = ()=> $("sec-overlay").classList.remove("active");
+  $("sec-overlay").addEventListener("click", e=>{ if(e.target===$("sec-overlay")) $("sec-overlay").classList.remove("active"); });
+
+  /* ============ DETAIL PANE ============ */
+  function categoryName(id){
+    const c = vault.categories.find(c=>c.id===id);
+    return c ? c.name : "Sin categoría";
+  }
+
+  function renderDetail(){
+    const pane = $("detail-pane");
+    const entry = vault.entries.find(e=>e.id===selectedEntryId);
+    if(!entry){
+      pane.innerHTML = `<div class="detail-placeholder"><div>Selecciona una entrada</div><div style="font-size:12.5px; color:var(--text-faint); font-family:var(--sans);">o crea una nueva para empezar</div></div>`;
+      return;
+    }
+    const type = entry.type || "password";
+    let fieldsHtml = "";
+    if(type === "password"){
+      if(entry.username) fieldsHtml += fieldRow("Usuario", entry.username, false);
+      if(entry.password) fieldsHtml += fieldRow("Contraseña", entry.password, true);
+      if(entry.url) fieldsHtml += fieldRow("URL", entry.url, false);
+    } else if(type === "card"){
+      if(entry.cardHolder) fieldsHtml += fieldRow("Titular", entry.cardHolder, false);
+      if(entry.cardNumber) fieldsHtml += fieldRow("Número", entry.cardNumber, true);
+      if(entry.cardExpiry) fieldsHtml += fieldRow("Vencimiento", entry.cardExpiry, false);
+      if(entry.cardCvv) fieldsHtml += fieldRow("CVV", entry.cardCvv, true);
+      if(entry.cardPin) fieldsHtml += fieldRow("PIN", entry.cardPin, true);
+    } else if(type === "id"){
+      if(entry.docType) fieldsHtml += fieldRow("Tipo", entry.docType, false);
+      if(entry.fullName) fieldsHtml += fieldRow("Nombre", entry.fullName, false);
+      if(entry.docNumber) fieldsHtml += fieldRow("Número", entry.docNumber, true);
+      if(entry.issueDate) fieldsHtml += fieldRow("Emisión", entry.issueDate, false);
+      if(entry.expiryDate) fieldsHtml += fieldRow("Vencimiento", entry.expiryDate, false);
+    } else if(type === "passkey"){
+      if(entry.account) fieldsHtml += fieldRow("Cuenta", entry.account, false);
+      if(entry.device) fieldsHtml += fieldRow("Dispositivo", entry.device, false);
+    }
+    (entry.customFields||[]).forEach(f=>{
+      fieldsHtml += fieldRow(f.label || "Campo", f.value, !!f.secret);
+    });
+
+    pane.innerHTML = `
+      <button class="mobile-back-btn" id="detail-back">← Volver</button>
+      <div class="detail-head">
+        <div>
+          <div class="detail-title">${escapeHtml(entry.title || "Sin título")}</div>
+          <span class="type-pill t-${type}"${type==="card"&&entry.cardColor?` style="background:${entry.cardColor}22; color:${entry.cardColor};"`:""}>${TYPE_LABELS[type] || "Contraseña"} · ${escapeHtml(categoryName(entry.category))}</span>
+        </div>
+        <div class="detail-actions">
+          <button class="icon-btn" id="detail-edit" title="Editar">✎</button>
+          <button class="icon-btn" id="detail-delete" title="Eliminar">🗑</button>
+        </div>
+      </div>
+      ${type==="note" ? `<div class="notes-box" style="margin-bottom:16px;">${escapeHtml(entry.content||"")}</div>` : `<div class="field-group">${fieldsHtml || '<div class="empty-state" style="padding:10px 0;">Sin campos.</div>'}</div>`}
+      ${entry.notes ? `<label class="form-label">Notas</label><div class="notes-box">${escapeHtml(entry.notes)}</div>` : ""}
+    `;
+    const backBtn = $("detail-back");
+    if(backBtn) backBtn.onclick = ()=> appEl.classList.remove("show-detail");
+
+    pane.querySelectorAll(".copy-field").forEach(btn=>{
+      btn.onclick = ()=>{
+        navigator.clipboard.writeText(btn.dataset.value).then(()=>toast("Copiado al portapapeles"));
+      };
+    });
+    pane.querySelectorAll(".reveal-field").forEach(btn=>{
+      btn.onclick = ()=>{
+        const valEl = btn.closest(".field-row").querySelector(".fr-value");
+        const isMasked = valEl.dataset.masked !== "false";
+        valEl.textContent = isMasked ? valEl.dataset.real : "•".repeat(Math.min(valEl.dataset.real.length,20));
+        valEl.dataset.masked = isMasked ? "false" : "true";
+      };
+    });
+
+    $("detail-edit").onclick = ()=>openEditor(entry.id, entry.type || "password");
+    $("detail-delete").onclick = ()=>{
+      if(confirm(`¿Eliminar "${entry.title}"? Esta acción no se puede deshacer.`)){
+        vault.entries = vault.entries.filter(e=>e.id!==entry.id);
+        selectedEntryId = null;
+        persistVault();
+        appEl.classList.remove("show-detail");
+        renderCategories(); renderList(); renderDetail();
+        toast("Entrada eliminada");
+      }
+    };
+  }
+
+  function fieldRow(label, value, secret, key){
+    const masked = secret;
+    const display = masked ? "•".repeat(Math.min(value.length,20)) : escapeHtml(value);
+    return `
+      <div class="field-row ${secret?'secret':''}">
+        <div class="fr-label">${escapeHtml(label)}</div>
+        <div class="fr-value" data-real="${escapeHtml(value)}" data-masked="${masked}">${display}</div>
+        <div class="fr-actions">
+          ${secret ? `<button class="mini-btn reveal-field" title="Mostrar">👁</button>` : ""}
+          <button class="mini-btn copy-field" data-value="${escapeHtml(value)}" title="Copiar">⧉</button>
+        </div>
+      </div>`;
+  }
+
+  /* ============ ENTRY EDITOR ============ */
+  const editorOverlay = $("editor-overlay");
+  let customFieldsState = [];
+
+  function populateCategorySelect(){
+    const sel = $("f-category");
+    sel.innerHTML = vault.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  }
+
+  /* ============ CARD COLOR PICKER ============ */
+  const CARD_COLORS = ["#4c8dff","#e35d5d","#1a1a1a","#3fb87a","#a374e6","#e68e3c","#4fb0a5","#e668a8","#c9a227","#6b7280"];
+  let selectedCardColor = CARD_COLORS[0];
+  function renderCardColorGrid(){
+    const grid = $("card-color-grid");
+    grid.innerHTML = "";
+    CARD_COLORS.forEach(c=>{
+      const sw = document.createElement("div");
+      sw.className = "card-color-swatch" + (c===selectedCardColor ? " active" : "");
+      sw.style.background = c;
+      sw.onclick = ()=>{ selectedCardColor = c; renderCardColorGrid(); };
+      grid.appendChild(sw);
+    });
+  }
+
+  const TYPE_LABELS = { password:"Contraseña", card:"Tarjeta de pago", note:"Nota segura", id:"Identidad", passkey:"Llave de acceso" };
+  let currentEditorType = "password";
+
+  function showTypeFields(type){
+    ["password","card","note","id","passkey"].forEach(t=>{
+      $("fields-"+t).style.display = (t===type) ? "block" : "none";
+    });
+    $("custom-fields-row").style.display = (type==="note") ? "none" : "block";
+  }
+
+  function openEditor(entryId, type){
+    editingEntryId = entryId || null;
+    populateCategorySelect();
+    const entry = entryId ? vault.entries.find(e=>e.id===entryId) : null;
+    currentEditorType = entry?.type || type || "password";
+    showTypeFields(currentEditorType);
+
+    $("editor-title").textContent = entry ? "Editar " + TYPE_LABELS[currentEditorType].toLowerCase() : "Nueva " + TYPE_LABELS[currentEditorType].toLowerCase();
+    $("f-title").value = entry?.title || "";
+    $("f-category").value = entry?.category || vault.categories[0]?.id || "";
+    $("f-notes").value = entry?.notes || "";
+
+    // password fields
+    $("f-username").value = entry?.username || "";
+    $("f-password").value = entry?.password || "";
+    $("f-password").type = "password";
+    $("f-pw-toggle").textContent = "👁";
+    $("f-url").value = entry?.url || "";
+
+    // card fields
+    selectedCardColor = entry?.cardColor || CARD_COLORS[0];
+    renderCardColorGrid();
+    $("f-card-holder").value = entry?.cardHolder || "";
+    $("f-card-number").value = entry?.cardNumber || "";
+    $("f-card-expiry").value = entry?.cardExpiry || "";
+    $("f-card-cvv").value = entry?.cardCvv || "";
+    $("f-card-pin").value = entry?.cardPin || "";
+
+    // note fields
+    $("f-note-content").value = entry?.content || "";
+
+    // id fields
+    $("f-id-doctype").value = entry?.docType || "INE/DNI";
+    $("f-id-name").value = entry?.fullName || "";
+    $("f-id-number").value = entry?.docNumber || "";
+    $("f-id-issue").value = entry?.issueDate || "";
+    $("f-id-expiry").value = entry?.expiryDate || "";
+
+    // passkey fields
+    $("f-passkey-account").value = entry?.account || "";
+    $("f-passkey-device").value = entry?.device || "";
+
+    customFieldsState = entry?.customFields ? JSON.parse(JSON.stringify(entry.customFields)) : [];
+    renderCustomFields();
+
+    editorOverlay.classList.add("active");
+    $("f-title").focus();
+  }
+
+  function closeEditor(){ editorOverlay.classList.remove("active"); }
+  $("editor-close").onclick = closeEditor;
+  $("editor-cancel").onclick = closeEditor;
+  editorOverlay.addEventListener("click", e=>{ if(e.target===editorOverlay) closeEditor(); });
+
+  $("f-pw-toggle").onclick = ()=>{
+    const inp = $("f-password");
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    $("f-pw-toggle").textContent = show ? "🙈" : "👁";
+  };
+
+  $("f-pw-generate").onclick = ()=>{
+    $("f-password").value = generatePassword(defaultGenOptions());
+    $("f-password").type = "text";
+    $("f-pw-toggle").textContent = "🙈";
+  };
+
+  function renderCustomFields(){
+    const container = $("custom-fields-container");
+    container.innerHTML = "";
+    customFieldsState.forEach((f,i)=>{
+      const row = document.createElement("div");
+      row.className = "custom-field-row";
+      row.innerHTML = `
+        <input type="text" placeholder="Etiqueta" value="${escapeHtml(f.label)}" data-i="${i}" data-k="label">
+        <input type="text" placeholder="Valor" value="${escapeHtml(f.value)}" data-i="${i}" data-k="value">
+        <button class="mini-btn" data-remove="${i}" title="Quitar">✕</button>`;
+      container.appendChild(row);
+    });
+    container.querySelectorAll("input").forEach(inp=>{
+      inp.addEventListener("input", e=>{
+        const i = +e.target.dataset.i, k = e.target.dataset.k;
+        customFieldsState[i][k] = e.target.value;
+      });
+    });
+    container.querySelectorAll("[data-remove]").forEach(btn=>{
+      btn.onclick = ()=>{
+        customFieldsState.splice(+btn.dataset.remove, 1);
+        renderCustomFields();
+      };
+    });
+  }
+
+  $("add-custom-field").onclick = ()=>{
+    customFieldsState.push({ label:"", value:"", secret:false });
+    renderCustomFields();
+  };
+
+  $("editor-save").onclick = async ()=>{
+    const title = $("f-title").value.trim();
+    if(!title){ toast("El título es obligatorio"); $("f-title").focus(); return; }
+
+    let data = {
+      title,
+      type: currentEditorType,
+      category: $("f-category").value,
+      notes: $("f-notes").value,
+      customFields: currentEditorType==="note" ? [] : customFieldsState.filter(f=>f.label || f.value)
+    };
+
+    if(currentEditorType === "password"){
+      data.username = $("f-username").value.trim();
+      data.password = $("f-password").value;
+      data.url = $("f-url").value.trim();
+    } else if(currentEditorType === "card"){
+      data.cardColor = selectedCardColor;
+      data.cardHolder = $("f-card-holder").value.trim();
+      data.cardNumber = $("f-card-number").value.trim();
+      data.cardExpiry = $("f-card-expiry").value.trim();
+      data.cardCvv = $("f-card-cvv").value.trim();
+      data.cardPin = $("f-card-pin").value.trim();
+    } else if(currentEditorType === "note"){
+      data.content = $("f-note-content").value;
+    } else if(currentEditorType === "id"){
+      data.docType = $("f-id-doctype").value;
+      data.fullName = $("f-id-name").value.trim();
+      data.docNumber = $("f-id-number").value.trim();
+      data.issueDate = $("f-id-issue").value.trim();
+      data.expiryDate = $("f-id-expiry").value.trim();
+    } else if(currentEditorType === "passkey"){
+      data.account = $("f-passkey-account").value.trim();
+      data.device = $("f-passkey-device").value.trim();
+    }
+
+    if(editingEntryId){
+      const idx = vault.entries.findIndex(e=>e.id===editingEntryId);
+      vault.entries[idx] = { id: editingEntryId, ...data };
+      selectedEntryId = editingEntryId;
+    } else {
+      const newEntry = { id: crypto.randomUUID(), ...data };
+      vault.entries.push(newEntry);
+      selectedEntryId = newEntry.id;
+    }
+    await persistVault();
+    closeEditor();
+    renderCategories(); renderList(); renderDetail();
+    toast("Guardado");
+  };
+
+  $("new-entry-btn").onclick = ()=>{ $("type-picker-overlay").classList.add("active"); };
+  $("type-picker-close").onclick = ()=> $("type-picker-overlay").classList.remove("active");
+  $("type-picker-overlay").addEventListener("click", e=>{ if(e.target===$("type-picker-overlay")) $("type-picker-overlay").classList.remove("active"); });
+  document.querySelectorAll(".type-picker-btn").forEach(btn=>{
+    btn.onclick = ()=>{
+      $("type-picker-overlay").classList.remove("active");
+      openEditor(null, btn.dataset.type);
+    };
+  });
+
+  /* ============ PASSWORD GENERATOR ============ */
+  function defaultGenOptions(){
+    return {
+      length: +$("gen-length").value,
+      upper: $("gen-upper").checked,
+      lower: $("gen-lower").checked,
+      nums: $("gen-nums").checked,
+      symbols: $("gen-symbols").checked
+    };
+  }
+
+  function generatePassword(opts){
+    const sets = {
+      upper: "ABCDEFGHJKLMNPQRSTUVWXYZ",
+      lower: "abcdefghijkmnopqrstuvwxyz",
+      nums: "23456789",
+      symbols: "!@#$%^&*()-_=+[]{}"
+    };
+    let pool = "";
+    if(opts.upper) pool += sets.upper;
+    if(opts.lower) pool += sets.lower;
+    if(opts.nums) pool += sets.nums;
+    if(opts.symbols) pool += sets.symbols;
+    if(!pool) pool = sets.lower + sets.nums;
+
+    const randVals = crypto.getRandomValues(new Uint32Array(opts.length));
+    let out = "";
+    for(let i=0;i<opts.length;i++){
+      out += pool[randVals[i] % pool.length];
+    }
+    return out;
+  }
+
+  const genOverlay = $("gen-overlay");
+  function openGenerator(){
+    genOverlay.classList.add("active");
+    regenerate();
+  }
+  function regenerate(){
+    $("gen-output").value = generatePassword(defaultGenOptions());
+  }
+  $("nav-generator").onclick = openGenerator;
+  $("gen-close").onclick = ()=>genOverlay.classList.remove("active");
+  genOverlay.addEventListener("click", e=>{ if(e.target===genOverlay) genOverlay.classList.remove("active"); });
+  $("gen-length").addEventListener("input", e=>{ $("gen-length-val").textContent = e.target.value; regenerate(); });
+  ["gen-upper","gen-lower","gen-nums","gen-symbols"].forEach(id=>{
+    $(id).addEventListener("change", regenerate);
+  });
+  $("gen-regenerate").onclick = regenerate;
+  $("gen-copy").onclick = ()=>{
+    navigator.clipboard.writeText($("gen-output").value).then(()=>toast("Contraseña copiada"));
+  };
+
+  /* ============ ONEDRIVE SYNC (OAuth 2.0 PKCE + Microsoft Graph) ============ */
+  const OD_CLIENT_ID = "5ad9d8ae-9b6e-4c2a-973b-749e00dc0600";
+  const OD_REDIRECT_URI = window.location.origin + window.location.pathname;
+  const OD_AUTHORITY = "https://login.microsoftonline.com/consumers";
+  const OD_SCOPES = "Files.ReadWrite.AppFolder offline_access User.Read";
+  const OD_TOKEN_KEY = "od_tokens_v1";
+  const OD_LAST_SYNC_KEY = "od_last_sync_v1";
+  const OD_VERIFIER_KEY = "od_pkce_verifier";
+  const OD_FILE_NAME = "vault.enc";
+
+  function b64url(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+
+  function randomString(len){
+    const arr = crypto.getRandomValues(new Uint8Array(len));
+    return b64url(arr).slice(0, len);
+  }
+
+  async function pkceChallenge(verifier){
+    const digest = await crypto.subtle.digest("SHA-256", enc.encode(verifier));
+    return b64url(digest);
+  }
+
+  function getStoredTokens(){
+    try{ return JSON.parse(localStorage.getItem(OD_TOKEN_KEY)); }catch(e){ return null; }
+  }
+  function storeTokens(tokens){
+    tokens.obtained_at = Date.now();
+    localStorage.setItem(OD_TOKEN_KEY, JSON.stringify(tokens));
+  }
+  function clearTokens(){ localStorage.removeItem(OD_TOKEN_KEY); }
+
+  async function odConnect(){
+    const verifier = randomString(64);
+    sessionStorage.setItem(OD_VERIFIER_KEY, verifier);
+    const challenge = await pkceChallenge(verifier);
+    const params = new URLSearchParams({
+      client_id: OD_CLIENT_ID,
+      response_type: "code",
+      redirect_uri: OD_REDIRECT_URI,
+      response_mode: "query",
+      scope: OD_SCOPES,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      state: "od_auth"
+    });
+    window.location.href = `${OD_AUTHORITY}/oauth2/v2.0/authorize?${params.toString()}`;
+  }
+
+  async function odHandleRedirect(){
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if(!code || state !== "od_auth") return;
+
+    const verifier = sessionStorage.getItem(OD_VERIFIER_KEY);
+    window.history.replaceState({}, "", OD_REDIRECT_URI);
+    if(!verifier) return;
+
+    try{
+      const body = new URLSearchParams({
+        client_id: OD_CLIENT_ID,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: OD_REDIRECT_URI,
+        code_verifier: verifier
+      });
+      const res = await fetch(`${OD_AUTHORITY}/oauth2/v2.0/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      if(!res.ok) throw new Error("token exchange failed");
+      const tokens = await res.json();
+      storeTokens(tokens);
+      toast("OneDrive conectado");
+    }catch(err){
+      toast("No se pudo conectar con OneDrive");
+    }
+  }
+
+  async function odGetValidAccessToken(){
+    let tokens = getStoredTokens();
+    if(!tokens) return null;
+    const age = Date.now() - (tokens.obtained_at || 0);
+    const expiresMs = (tokens.expires_in || 3600) * 1000;
+    if(age < expiresMs - 60000) return tokens.access_token;
+
+    if(!tokens.refresh_token) { clearTokens(); return null; }
+    try{
+      const body = new URLSearchParams({
+        client_id: OD_CLIENT_ID,
+        grant_type: "refresh_token",
+        refresh_token: tokens.refresh_token,
+        scope: OD_SCOPES
+      });
+      const res = await fetch(`${OD_AUTHORITY}/oauth2/v2.0/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      if(!res.ok) throw new Error("refresh failed");
+      const newTokens = await res.json();
+      storeTokens(newTokens);
+      return newTokens.access_token;
+    }catch(err){
+      clearTokens();
+      return null;
+    }
+  }
+
+  async function odUploadVault(){
+    const token = await odGetValidAccessToken();
+    if(!token){ toast("Conecta OneDrive primero"); return false; }
+    const blob = JSON.parse(localStorage.getItem(STORAGE_BLOB));
+    const payload = JSON.stringify({ ...blob, salt: localStorage.getItem(STORAGE_SALT) });
+    try{
+      const res = await fetch(
+        `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${OD_FILE_NAME}:/content`,
+        { method:"PUT", headers:{ "Authorization":"Bearer "+token, "Content-Type":"application/octet-stream" }, body: payload }
+      );
+      if(!res.ok) throw new Error("upload failed");
+      localStorage.setItem(OD_LAST_SYNC_KEY, Date.now().toString());
+      toast("Bóveda subida a OneDrive");
+      return true;
+    }catch(err){
+      toast("Error al subir a OneDrive");
+      return false;
+    }
+  }
+
+  async function odDownloadVault(){
+    const token = await odGetValidAccessToken();
+    if(!token){ toast("Conecta OneDrive primero"); return; }
+    try{
+      const res = await fetch(
+        `https://graph.microsoft.com/v1.0/me/drive/special/approot:/${OD_FILE_NAME}:/content`,
+        { headers:{ "Authorization":"Bearer "+token } }
+      );
+      if(res.status === 404){ toast("No hay copia en OneDrive aún"); return; }
+      if(!res.ok) throw new Error("download failed");
+      const remote = await res.json();
+      if(!confirm("Esto reemplazará la bóveda de este dispositivo con la de OneDrive. ¿Continuar?")) return;
+
+      // Se descifra con la llave de la sesión actual (misma contraseña maestra en ambos dispositivos)
+      const data = await decryptVault({ iv: remote.iv, data: remote.data }, sessionKey);
+      vault = data;
+      localStorage.setItem(STORAGE_SALT, remote.salt);
+      localStorage.setItem(STORAGE_BLOB, JSON.stringify({ iv: remote.iv, data: remote.data }));
+      localStorage.setItem(OD_LAST_SYNC_KEY, Date.now().toString());
+      selectedEntryId = null;
+      renderCategories(); renderList(); renderDetail();
+      toast("Bóveda restaurada desde OneDrive");
+    }catch(err){
+      toast("No se pudo descifrar: usa la misma contraseña maestra en ambos dispositivos");
+    }
+  }
+
+  function odUpdateModalView(){
+    const tokens = getStoredTokens();
+    const connected = !!tokens;
+    $("od-disconnected-view").style.display = connected ? "none" : "block";
+    $("od-connected-view").style.display = connected ? "block" : "none";
+    $("onedrive-label").textContent = connected ? "OneDrive conectado" : "Conectar OneDrive";
+    if(connected){
+      const last = localStorage.getItem(OD_LAST_SYNC_KEY);
+      $("od-last-sync").textContent = last ? "Última sincronización: " + new Date(+last).toLocaleString("es-MX") : "Aún no se ha sincronizado";
+    }
+  }
+
+  $("nav-onedrive").onclick = ()=>{ odUpdateModalView(); $("od-overlay").classList.add("active"); };
+  $("od-close").onclick = ()=> $("od-overlay").classList.remove("active");
+  $("od-overlay").addEventListener("click", e=>{ if(e.target===$("od-overlay")) $("od-overlay").classList.remove("active"); });
+  $("od-connect-btn").onclick = odConnect;
+  $("od-upload-btn").onclick = ()=> odUploadVault().then(odUpdateModalView);
+  $("od-download-btn").onclick = ()=> odDownloadVault().then(odUpdateModalView);
+  $("od-disconnect-btn").onclick = ()=>{ clearTokens(); odUpdateModalView(); toast("OneDrive desconectado"); };
+
+  /* ============ BIOMETRIC UNLOCK (WebAuthn) ============ */
+  const BIO_CRED_KEY = "bio_cred_id_v1";
+  const BIO_WRAPKEY_KEY = "bio_wrapkey_v1";
+  const BIO_WRAPPED_PW_KEY = "bio_wrapped_pw_v1";
+
+  function bioSupported(){
+    return !!(window.PublicKeyCredential && navigator.credentials);
+  }
+  function bioIsEnabled(){
+    return !!localStorage.getItem(BIO_CRED_KEY);
+  }
+
+  async function bioRegister(masterPassword){
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const userId = crypto.getRandomValues(new Uint8Array(16));
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: "Bóveda" },
+        user: { id: userId, name: "boveda-local", displayName: "Bóveda" },
+        pubKeyCredParams: [{ type:"public-key", alg:-7 }, { type:"public-key", alg:-257 }],
+        authenticatorSelection: { authenticatorAttachment:"platform", userVerification:"required" },
+        timeout: 60000
+      }
+    });
+    if(!cred) throw new Error("no credential");
+
+    // Wrap the master password locally behind a device key
+    const wrapKey = await crypto.subtle.generateKey({ name:"AES-GCM", length:256 }, true, ["encrypt","decrypt"]);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const cipher = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, wrapKey, enc.encode(masterPassword));
+    const rawKey = await crypto.subtle.exportKey("raw", wrapKey);
+
+    localStorage.setItem(BIO_CRED_KEY, b64(cred.rawId));
+    localStorage.setItem(BIO_WRAPKEY_KEY, b64(rawKey));
+    localStorage.setItem(BIO_WRAPPED_PW_KEY, JSON.stringify({ iv:b64(iv), data:b64(cipher) }));
+  }
+
+  function bioDisable(){
+    localStorage.removeItem(BIO_CRED_KEY);
+    localStorage.removeItem(BIO_WRAPKEY_KEY);
+    localStorage.removeItem(BIO_WRAPPED_PW_KEY);
+  }
+
+  async function bioUnlock(){
+    const credIdB64 = localStorage.getItem(BIO_CRED_KEY);
+    if(!credIdB64) return null;
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ id: unb64(credIdB64), type:"public-key" }],
+        userVerification: "required",
+        timeout: 60000
+      }
+    });
+    if(!assertion) return null;
+
+    const rawKey = unb64(localStorage.getItem(BIO_WRAPKEY_KEY));
+    const wrapKey = await crypto.subtle.importKey("raw", rawKey, { name:"AES-GCM" }, false, ["decrypt"]);
+    const wrapped = JSON.parse(localStorage.getItem(BIO_WRAPPED_PW_KEY));
+    const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv: unb64(wrapped.iv) }, wrapKey, unb64(wrapped.data));
+    return dec.decode(plain);
+  }
+
+  function refreshBioLockButton(){
+    const btn = $("unlock-biometric-btn");
+    if(bioSupported() && bioIsEnabled()){ btn.style.display = "block"; }
+    else { btn.style.display = "none"; }
+  }
+  $("unlock-biometric-btn").addEventListener("click", async ()=>{
+    try{
+      const pw = await bioUnlock();
+      if(!pw) return;
+      $("unlock-pw").value = pw;
+      await unlockAttempt();
+    }catch(err){
+      $("unlock-error").textContent = "No se pudo verificar la huella.";
+    }
+  });
+
+  function renderBioModal(){
+    $("bio-unsupported").style.display = "none";
+    $("bio-off-view").style.display = "none";
+    $("bio-on-view").style.display = "none";
+    if(!bioSupported()){ $("bio-unsupported").style.display = "block"; return; }
+    if(bioIsEnabled()){ $("bio-on-view").style.display = "block"; }
+    else { $("bio-off-view").style.display = "block"; $("bio-confirm-pw").value = ""; $("bio-error").textContent = ""; }
+  }
+  $("tool-biometric").onclick = ()=>{ $("tools-overlay").classList.remove("active"); renderBioModal(); $("bio-overlay").classList.add("active"); };
+  $("bio-close").onclick = ()=> $("bio-overlay").classList.remove("active");
+  $("bio-overlay").addEventListener("click", e=>{ if(e.target===$("bio-overlay")) $("bio-overlay").classList.remove("active"); });
+
+  $("bio-enable-btn").onclick = async ()=>{
+    const pw = $("bio-confirm-pw").value;
+    const err = $("bio-error");
+    err.textContent = "";
+    try{
+      const salt = unb64(localStorage.getItem(STORAGE_SALT));
+      const key = await deriveKey(pw, salt);
+      const blob = JSON.parse(localStorage.getItem(STORAGE_BLOB));
+      await decryptVault(blob, key); // throws if password is wrong
+      await bioRegister(pw);
+      toast("Desbloqueo con huella activado");
+      renderBioModal();
+      refreshBioLockButton();
+    }catch(e){
+      err.textContent = "Contraseña incorrecta, o cancelaste la huella.";
+    }
+  };
+  $("bio-disable-btn").onclick = ()=>{
+    bioDisable();
+    toast("Desbloqueo con huella desactivado");
+    renderBioModal();
+    refreshBioLockButton();
+  };
+  refreshBioLockButton();
+  initLockScreen();
+  odHandleRedirect().then(()=>{ if(appEl.classList.contains("active")) odUpdateModalView(); });
+
+})();
+</script>
+</body>
+</html>
